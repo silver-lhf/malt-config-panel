@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface APIHistory {
+  id: number;
+  name: string;
+}
 
 export default function TabAPI() {
   const [api, setAPI] = useState({
@@ -10,6 +15,7 @@ export default function TabAPI() {
     payload: "",
     response: "",
   });
+  const [apiHistory, setAPIHistory] = useState<APIHistory[]>([]);
 
   function api2string() {
     return `
@@ -89,18 +95,26 @@ export default function TabAPI() {
     }));
   }
 
-  async function saveRequest(event: React.MouseEvent<HTMLElement>) {
-    console.log("SAVE", typeof event, event);
+  async function saveRequest(_: React.MouseEvent<HTMLElement>) {
+    let tosave_api = {
+      name: api.name,
+      method: api.method,
+      url: api.url,
+      apikey: api.apikey,
+      header: api.header,
+      payload: api.payload,
+    };
 
     let result: string;
+    console.log(`/api/save?apiName=${api.name}`);
     try {
-      const res = await fetch("/api/save", {
+      const res = await fetch(`/api/save?apiName=${api.name}`, {
         method: "POST",
-        body: JSON.stringify(api),
+        body: JSON.stringify(tosave_api),
       });
 
       if (res.status === 200) {
-        result = `Successful Saved`;
+        result = `Successful Saved >> ${await res.text()}`;
       } else {
         result = `${res.status}\n${res}`;
       }
@@ -114,9 +128,7 @@ export default function TabAPI() {
     }));
   }
 
-  function runRequest(event: React.MouseEvent<HTMLElement>) {
-    console.log("RUN", typeof event, event);
-
+  function runRequest(_: React.MouseEvent<HTMLElement>) {
     if (!api.name) {
       setAPI((currentValue) => ({
         ...currentValue,
@@ -136,7 +148,7 @@ export default function TabAPI() {
     executeAPI();
   }
 
-  async function executeAPI(): Promise<void> {
+  async function executeAPI() {
     console.log("EXECUTE");
 
     let _url = api.url;
@@ -148,28 +160,25 @@ export default function TabAPI() {
         continue;
       }
 
-      console.log(item.key, item.value);
       _header[item.key] = item.value;
     }
 
-    // if (api.apikey) {
-    //   console.log("APIkey", api.apikey);
-    // _header["X-Auth-Token"] = api.apikey;
-    // }
+    if (api.apikey) {
+      _header["api-key"] = api.apikey.trim();
+    }
 
-    // if (api.payload) {
-    //   console.log("payload", api.payload);
-    //   _body = JSON.stringify(api.payload);
-    // }
-
-    console.log(_url, _method);
+    let _body;
+    if (api.payload) {
+      _header["Content-Type"] = "text/plain";
+      _body = api.payload.trim();
+    }
 
     let result: string;
     try {
       const res = await fetch(_url, {
         method: _method,
-        // headers: _header,
-        // body: _body,
+        headers: _header,
+        body: _body,
       });
 
       if (res.status === 200) {
@@ -187,205 +196,310 @@ export default function TabAPI() {
       response: result,
     }));
   }
+
+  useEffect(() => {
+    // fetch files list
+    fetch("/api/load")
+      .then((res) => {
+        if (res.ok) {
+          return res.text();
+        }
+      })
+      .then((resText) => {
+        console.log(resText);
+
+        if (resText === undefined) {
+          return;
+        }
+
+        let rawJson = JSON.parse(resText);
+        let history: APIHistory[] = [];
+        Object.keys(rawJson).map((item) => {
+          const fields = item.slice(0, -5).split("_");
+          let itemObj = {
+            id: Number(fields[1]),
+            name: fields[2],
+          };
+          history.push(itemObj);
+        });
+        setAPIHistory(history);
+        console.log(history);
+        console.log(apiHistory);
+      })
+      .catch((e) => {
+        console.log(e);
+      });
+  }, []);
+
   const buttonStyle = {
     color: "#FFAC0A",
     background: "#FFFBEC",
   };
 
   return (
-    <div className="grid grid-cols-2 gap-12">
-      <div className="w-full rounded shadow-lg">
-        <div className="px-6 py-4">
-          {/* <form id="apiform" onSubmit={runRequest}> */}
-          <div className="grid grid-cols-3 gap-2">
-            <label
-              htmlFor="name"
-              className="place-self-center text-sm font-medium text-gray-900 "
-            >
-              Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={api.name}
-              onChange={handleNameChange}
-              className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-              placeholder="Butterfly count"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <label
-              htmlFor="method"
-              className="place-self-center text-sm font-medium text-gray-900 "
-            >
-              Method
-            </label>
-            <select
-              id="method"
-              value={api.method}
-              onChange={handleMethodChange}
-              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-            >
-              <option value="GET" selected>
-                GET
-              </option>
-              <option value="POST">POST</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <label
-              htmlFor="url"
-              className="place-self-center text-sm font-medium text-gray-900 "
-            >
-              URL
-            </label>
-            <input
-              type="text"
-              id="url"
-              value={api.url}
-              name="url"
-              onChange={handleURLChange}
-              className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-              placeholder="http://api.example/"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            <label
-              htmlFor="apikey"
-              className="place-self-center text-sm font-medium text-gray-900 "
-            >
-              APIKey
-            </label>
-            <input
-              type="text"
-              id="apikey"
-              value={api.apikey}
-              onChange={handleAPIKeyChange}
-              className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-              placeholder="your-api-key"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-1">
-            <label
-              htmlFor="header"
-              className="place-self-center text-sm font-medium text-gray-900 "
-            >
-              Header
+    <div>
+      <div className="grid grid-cols-2 gap-12">
+        <div className="w-full rounded shadow-lg">
+          <div className="px-6 py-4">
+            {/* <form id="apiform" onSubmit={runRequest}> */}
+            <div className="grid grid-cols-3 gap-2">
+              <label
+                htmlFor="name"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                Name
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={api.name}
+                onChange={handleNameChange}
+                className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                placeholder="Butterfly count"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <label
+                htmlFor="method"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                Method
+              </label>
+              <select
+                id="method"
+                value={api.method}
+                onChange={handleMethodChange}
+                className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+              >
+                <option value="GET" selected>
+                  GET
+                </option>
+                <option value="POST">POST</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <label
+                htmlFor="url"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                URL
+              </label>
+              <input
+                type="text"
+                id="url"
+                value={api.url}
+                name="url"
+                onChange={handleURLChange}
+                className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                placeholder="http://api.example/"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <label
+                htmlFor="apikey"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                APIKey
+              </label>
+              <input
+                type="text"
+                id="apikey"
+                value={api.apikey}
+                onChange={handleAPIKeyChange}
+                className="col-span-2 text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                placeholder="your-api-key"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-1">
+              <label
+                htmlFor="header"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                Header
+                <button
+                  style={buttonStyle}
+                  onClick={handelAPIKeyAppend}
+                  className="hover:bg-yellow-700 font-bold rounded-full"
+                >
+                  +
+                </button>
+              </label>
+              {api.header.map((item, index) => {
+                if (index === 0) {
+                  return (
+                    <div className="col-span-2 grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        id={`header-${index}`}
+                        value={item.key}
+                        onChange={(e) => handleHeaderChange(e, index)}
+                        className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                        placeholder="key"
+                      />
+                      <input
+                        type="text"
+                        id={`header-value-${index}`}
+                        value={item.value}
+                        onChange={(e) => handleHeaderValueChange(e, index)}
+                        className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                        placeholder="value"
+                      />
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="col-start-2 col-span-2 grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        id={`header-${index}`}
+                        value={item.key}
+                        onChange={(e) => handleHeaderChange(e, index)}
+                        className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                        placeholder="key"
+                      />
+                      <input
+                        type="text"
+                        id={`header-value-${index}`}
+                        value={item.value}
+                        onChange={(e) => handleHeaderValueChange(e, index)}
+                        className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                        placeholder="value"
+                      />
+                    </div>
+                  );
+                }
+              })}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <label
+                htmlFor="payload"
+                className="place-self-center text-sm font-medium text-gray-900 "
+              >
+                Payload
+              </label>
+              <textarea
+                rows={16}
+                id="payload"
+                value={api.payload}
+                onChange={handlePayloadChange}
+                className="col-span-2 resize-none h-full text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+                placeholder="{ ... body }"
+              />
+            </div>
+            <div className="mt-2 flex flex-row">
               <button
                 style={buttonStyle}
-                onClick={handelAPIKeyAppend}
-                className="hover:bg-yellow-700 font-bold rounded-full"
+                className="mx-2 font-bold py-2 px-4 rounded"
+                onClick={saveRequest}
               >
-                +
+                Save
               </button>
-            </label>
-            {api.header.map((item, index) => {
-              if (index === 0) {
-                return (
-                  <div className="col-span-2 grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      id={`header-${index}`}
-                      value={item.key}
-                      onChange={(e) => handleHeaderChange(e, index)}
-                      className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-                      placeholder="key"
-                    />
-                    <input
-                      type="text"
-                      id={`header-value-${index}`}
-                      value={item.value}
-                      onChange={(e) => handleHeaderValueChange(e, index)}
-                      className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-                      placeholder="value"
-                    />
-                  </div>
-                );
-              } else {
-                return (
-                  <div className="col-start-2 col-span-2 grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      id={`header-${index}`}
-                      value={item.key}
-                      onChange={(e) => handleHeaderChange(e, index)}
-                      className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-                      placeholder="key"
-                    />
-                    <input
-                      type="text"
-                      id={`header-value-${index}`}
-                      value={item.value}
-                      onChange={(e) => handleHeaderValueChange(e, index)}
-                      className="text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-                      placeholder="value"
-                    />
-                  </div>
-                );
-              }
-            })}
+
+              <button
+                style={buttonStyle}
+                className="mx-2 font-bold py-2 px-4 rounded"
+                // type="submit"
+                // form="apiform"
+                // value="Submit"
+                onClick={runRequest}
+              >
+                Run request
+              </button>
+            </div>
+            {/* </form> */}
           </div>
-          <div className="grid grid-cols-3 gap-2">
+        </div>
+
+        <div className="w-full rounded shadow-lg">
+          <div className="px-6 py-4">
             <label
-              htmlFor="payload"
-              className="place-self-center text-sm font-medium text-gray-900 "
+              htmlFor="response"
+              className="mb-6 text-left block text-sm font-medium text-gray-900 "
             >
-              Payload
+              Response
             </label>
             <textarea
-              rows={16}
-              id="payload"
-              value={api.payload}
-              onChange={handlePayloadChange}
-              className="col-span-2 resize-none h-full text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-              placeholder="{ ... body }"
+              rows={28}
+              id="response"
+              disabled
+              value={api.response}
+              className="block resize-none text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
+              placeholder="{ ... response }"
             />
           </div>
-          <div className="mt-2 flex flex-row">
-            <button
-              style={buttonStyle}
-              className="mx-2 font-bold py-2 px-4 rounded"
-              onClick={saveRequest}
-            >
-              Save
-            </button>
-
-            <button
-              style={buttonStyle}
-              className="mx-2 font-bold py-2 px-4 rounded"
-              // type="submit"
-              // form="apiform"
-              // value="Submit"
-              onClick={runRequest}
-            >
-              Run request
-            </button>
+        </div>
+      </div>
+      {/* <ul className="max-w-xs text-left font-medium text-md leading-none border-yellow-400 divide-y divide-yellow-400">
+        {apiRecord.map((api_name) => {
+          // console.log(api_name);
+          return (
+            <li>
+              <a
+                className="py-3.5 w-full flex items-center hover:text-yellow-700 hover:bg-yellow-50"
+                href="#"
+              >
+                <span className="ml-5 mr-2.5 w-1 h-7 bg-yellow-500 rounded-r-md"></span>
+                {api_name.substring(0, api_name.length - 5)}
+              </a>
+            </li>
+          );
+        })}
+      </ul> */}
+      {/* <div className="flex flex-col">
+        <div className="overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div className="inline-block min-w-full py-2 sm:px-6 lg:px-8">
+            <div className="overflow-hidden">
+              <table className="min-w-full text-left text-sm font-light">
+                <thead className="border-b font-medium dark:border-neutral-500">
+                  <tr>
+                    <th scope="col" className="px-6 py-4">
+                      #
+                    </th>
+                    <th scope="col" className="px-6 py-4">
+                      First
+                    </th>
+                    <th scope="col" className="px-6 py-4">
+                      Last
+                    </th>
+                    <th scope="col" className="px-6 py-4">
+                      Handle
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium">
+                      1
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">Mark</td>
+                    <td className="whitespace-nowrap px-6 py-4">Otto</td>
+                    <td className="whitespace-nowrap px-6 py-4">@mdo</td>
+                  </tr>
+                  <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium">
+                      2
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">Jacob</td>
+                    <td className="whitespace-nowrap px-6 py-4">Thornton</td>
+                    <td className="whitespace-nowrap px-6 py-4">@fat</td>
+                  </tr>
+                  <tr className="border-b transition duration-300 ease-in-out hover:bg-neutral-100 dark:border-neutral-500 dark:hover:bg-neutral-600">
+                    <td className="whitespace-nowrap px-6 py-4 font-medium">
+                      3
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">Larry</td>
+                    <td className="whitespace-nowrap px-6 py-4">Wild</td>
+                    <td className="whitespace-nowrap px-6 py-4">@twitter</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-          {/* </form> */}
         </div>
-      </div>
-
-      <div className="w-full rounded shadow-lg">
-        <div className="px-6 py-4">
-          <label
-            htmlFor="response"
-            className="mb-6 text-left block text-sm font-medium text-gray-900 "
-          >
-            Response
-          </label>
-          <textarea
-            rows={28}
-            id="response"
-            disabled
-            value={api.response}
-            className="block resize-none text-left bg-gray-200 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 w-full p-2.5"
-            placeholder="{ ... response }"
-          />
-        </div>
-      </div>
+      </div> */}
     </div>
   );
 }

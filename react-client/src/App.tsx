@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from "react";
 import "./App.css";
 import TabWiFi from "./TabWiFi";
-import TabAPI from "./TabAPI";
+import TabDevice from "./TabDevice";
 import TabStorage from "./TabStorage";
+import TabAPI from "./TabAPI";
+import TabConfig from "./TabConfig";
+import TabTemplate from "./TabTemplate";
 
 function App() {
   const [activeTab, setActiveTab] = useState(0);
 
   const tabData = [
-    { id: 0, title: "Config Template", renderContent: null },
+    { id: 0, title: "Config Template", renderContent: <TabTemplate /> },
     { id: 1, title: "WiFi", renderContent: <TabWiFi /> },
-    { id: 2, title: "Device", renderContent: null },
+    { id: 2, title: "Device", renderContent: <TabDevice /> },
     { id: 3, title: "Storage", renderContent: <TabStorage /> },
     { id: 4, title: "API", renderContent: <TabAPI /> },
-    { id: 5, title: "Setting", renderContent: null },
+    { id: 5, title: "Setting", renderContent: <TabConfig /> },
   ];
 
   function handleNavigate(event: React.MouseEvent, tabId: number) {
@@ -29,10 +32,12 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col flex-auto flex-shrink-0 antialiased bg-gray-50 text-gray-800">
-      <div className="fixed flex flex-col top-0 left-0 w-64 bg-white h-full border-r">
+    // min-h-screen
+    <div className="flex flex-col flex-auto flex-shrink-0 antialiased bg-gray-50 text-gray-800">
+      <div className="fixed flex flex-col top-0 left-0 w-64 bg-white h-full border-r my-0">
         <div className="flex items-center justify-center h-14 border-b">
           <div>MALT</div>
+          <br></br>
           <div>Turned-E!</div>
         </div>
         <div className="overflow-y-auto overflow-x-hidden flex-grow">
@@ -217,8 +222,8 @@ function App() {
         </div>
       </div>
       <div className="flex flex-row">
-        <div className="basis-1/3"></div>
-        <div className="basic-2/3 flex flex-col h-full w-full overflow-y-auto">
+        <div className="basis-2/5"></div>
+        <div className="basic-3/5 flex flex-col h-full w-full overflow-y-auto px-6">
           <div className="mt-4">
             {tabData.map((tab) => (
               <div

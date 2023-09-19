@@ -14,7 +14,7 @@ body {
 div,
 input,
 select {
-    padding: 5px;
+    padding: 5px 0;
     font-size: 1em;
     margin: 5px 0;
     box-sizing: border-box

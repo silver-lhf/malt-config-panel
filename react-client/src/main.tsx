@@ -6,5 +6,5 @@ import './index.css'
 ReactDOM.createRoot(document.getElementById('🌐') as HTMLElement).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>,
+  </React.StrictMode>
 )
