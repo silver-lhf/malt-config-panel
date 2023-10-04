@@ -34,11 +34,10 @@ function App() {
   return (
     // min-h-screen
     <div className="flex flex-col flex-auto flex-shrink-0 antialiased bg-gray-50 text-gray-800">
-      <div className="fixed flex flex-col top-0 left-0 w-64 bg-white h-full border-r my-0">
-        <div className="flex items-center justify-center h-14 border-b">
-          <div>MALT</div>
-          <br></br>
-          <div>Turned-E!</div>
+      <div className="fixed flex flex-col top-0 left-0 bg-white h-full border-r my-0">
+        <div className="flex flex-col items-center justify-center h-14 border-b">
+          <div className="py-0 my-0 hidden lg:block">MALT</div>
+          <div className="py-0 my-0 hidden lg:block">@Turned-E!</div>
         </div>
         <div className="overflow-y-auto overflow-x-hidden flex-grow">
           <ul className="flex flex-col py-4 space-y-1">
@@ -69,7 +68,7 @@ function App() {
                     />
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
                   Config Template
                 </span>
               </a>
@@ -92,7 +91,7 @@ function App() {
                     <path d="M13.229 8.271a.482.482 0 0 0-.063-.745A9.455 9.455 0 0 0 8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065A8.46 8.46 0 0 1 8 7a8.46 8.46 0 0 1 4.576 1.336c.206.132.48.108.653-.065zm-2.183 2.183c.226-.226.185-.605-.1-.75A6.473 6.473 0 0 0 8 9c-1.06 0-2.062.254-2.946.704-.285.145-.326.524-.1.75l.015.015c.16.16.407.19.611.09A5.478 5.478 0 0 1 8 10c.868 0 1.69.201 2.42.56.203.1.45.07.61-.091l.016-.015zM9.06 12.44c.196-.196.198-.52-.04-.66A1.99 1.99 0 0 0 8 11.5a1.99 1.99 0 0 0-1.02.28c-.238.14-.236.464-.04.66l.706.706a.5.5 0 0 0 .707 0l.707-.707z" />
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
                   WiFi
                 </span>
               </a>
@@ -115,7 +114,7 @@ function App() {
                     <path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-2zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-4z" />
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
                   Device
                 </span>
               </a>
@@ -137,7 +136,7 @@ function App() {
                     <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a1.99 1.99 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4H2.19zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139C1.72 3.042 1.95 3 2.19 3h5.396l-.707-.707z" />
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
                   Storage
                 </span>
               </a>
@@ -159,11 +158,13 @@ function App() {
                     <path d="M10.478 1.647a.5.5 0 1 0-.956-.294l-4 13a.5.5 0 0 0 .956.294l4-13zM4.854 4.146a.5.5 0 0 1 0 .708L1.707 8l3.147 3.146a.5.5 0 0 1-.708.708l-3.5-3.5a.5.5 0 0 1 0-.708l3.5-3.5a.5.5 0 0 1 .708 0zm6.292 0a.5.5 0 0 0 0 .708L14.293 8l-3.147 3.146a.5.5 0 0 0 .708.708l3.5-3.5a.5.5 0 0 0 0-.708l-3.5-3.5a.5.5 0 0 0-.708 0z" />
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">API</span>
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
+                  API
+                </span>
               </a>
             </li>
 
-            <li className="px-5 py-5">
+            <li className="px-5 py-5 hidden lg:block">
               <div className="flex flex-row items-center h-8">
                 <div className="text-sm font-light tracking-wide text-gray-500">
                   Device
@@ -192,13 +193,13 @@ function App() {
                 </li>
               </ul>
             </li>
-            <li>
+            <li className="my-2">
               <a
                 href="#"
                 onClick={(event) => handleNavigate(event, 5)}
                 className="relative flex flex-row items-center mt-auto h-11 focus:outline-none hover:bg-gray-50 text-gray-600 hover:text-gray-800 border-l-4 border-transparent hover:border-indigo-500 px-auto"
               >
-                <span className="inline-flex justify-center items-center ml-4">
+                <span className="inline-flex justify-center items-center ml-4 mr-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 24 24"
@@ -207,13 +208,13 @@ function App() {
                     stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                    className="feather feather-settings w-8 h-8 ml-4 mr-2"
+                    className="feather feather-settings w-8 h-8 mr-2"
                   >
                     <circle cx="12" cy="12" r="3"></circle>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                   </svg>
                 </span>
-                <span className="ml-2 text-sm tracking-wide truncate">
+                <span className="ml-2 text-sm tracking-wide truncate hidden lg:block">
                   Settings
                 </span>
               </a>
@@ -223,21 +224,19 @@ function App() {
       </div>
       <div className="flex flex-row">
         <div className="basis-2/5"></div>
-        <div className="basic-3/5 flex flex-col h-full w-full overflow-y-auto px-6">
+        <div className="basic-2/5 flex flex-col h-full w-full overflow-y-auto px-6">
           <div className="mt-4">
             {tabData.map((tab) => (
               <div
                 key={tab.id}
                 className={activeTab === tab.id ? "block" : "hidden"}
               >
-                <h1>
-                  Tab {activeTab} {tab.title}
-                </h1>
                 <div className="my-4">{tab.renderContent}</div>
               </div>
             ))}
           </div>
         </div>
+        <div className="basis-1/5"></div>
       </div>
     </div>
   );

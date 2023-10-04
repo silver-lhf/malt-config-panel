@@ -97,27 +97,9 @@ export default function TabStorage() {
   }, []);
 
   return (
-    <div className="grid grid-cols-2 gap-12">
+    <div className="grid grid-row lg:grid-cols-2 gap-12">
       <div className="w-full rounded shadow-lg">
         <div className="px-6 py-4 relative">
-          {/* <ul className="max-w-xs text-left font-medium text-md leading-none border-yellow-400 divide-y divide-yellow-400">
-            {Object.keys(files).map((filename) => {
-              return (
-                <li>
-                  <a
-                    style={colorStyle}
-                    className="py-3.5 w-full flex items-center hover:text-yellow-700 hover:bg-yellow-50"
-                    href="#"
-                  >
-                     <FolderBar fname={filename} />
-
-                    <span className="ml-5 mr-2.5 w-1 h-7 bg-yellow-500 rounded-r-md"></span>
-                    {filename}
-                  </a>
-                </li>
-              );
-            })} 
-          </ul>*/}
           {fileTree(files, "")}
         </div>
       </div>

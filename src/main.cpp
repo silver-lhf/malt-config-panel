@@ -1,15 +1,27 @@
 #include <LittleFS.h>
+#include <DNSServer.h>
 #include <WiFi.h>
 #include "fileHelper.h"
+#include "AsyncTCP.h"
 #include <ESPAsyncWebServer.h>
 #include "PubSubClient.h"
 #include <ArduinoJson.h>
 
-#define PIN_NUMBER 11
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
+#include <WiFiClientSecure.h>
+#include "cert.h"
+
+#define PIN_NUMBER 9
 #define CONFIG_TRIGGER_PIN 27
 #define WIFICONNECT_RETRY_TIMES 5
 #define RXD2 9
 #define TXD2 10
+
+String FirmwareVer = {
+    "2.1"};
+#define URL_fw_Version "https://raw.githubusercontent.com/Endrave/endrave.github.io/master/OTA/fw_ver.txt"
+#define URL_fw_Bin "https://raw.githubusercontent.com/Endrave/endrave.github.io/master/OTA/fw.bin"
 
 const String apiFolder = "/storage/api/";
 const String pinPath = "/storage/pin.json";
@@ -22,14 +34,12 @@ String onenetPassword = "";
 String onenetTransferInterval = "10000";
 
 // pin-related => re-write into a class
-const uint8_t pin[] = {2, 9, 10, 13, 14, 15, 19, 21, 25, 32, 33};
-const uint8_t pinType[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1}; // 0 for digital, 1 for analog
-uint8_t pinReadWrite[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};  // 0 for read, 1 for write
-boolean pinEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+const uint8_t pin[] = {2, 13, 14, 15, 19, 21, 25, 32, 33};
+const uint8_t pinType[] = {0, 0, 0, 0, 0, 0, 0, 1, 1}; // 0 for digital, 1 for analog
+uint8_t pinReadWrite[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};  // 0 for read, 1 for write
+boolean pinEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 String pinTopic[] = {
     "Pin 2",
-    "Pin 9",
-    "Pin 10",
     "Pin 13",
     "Pin 14",
     "Pin 15",
@@ -39,10 +49,11 @@ String pinTopic[] = {
     "Pin 32",
     "Pin 33",
 };
-boolean pinEventTriggerEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t pinEventTriggerType[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t pinEventTriggerValue[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+boolean pinEventTriggerEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t pinEventTriggerType[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t pinEventTriggerValue[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+DNSServer dnsServer;
 AsyncWebServer server(80);
 
 String wifiSSID = "";
@@ -52,6 +63,8 @@ const int mqttPort = 6002;                // port number                        
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+const IPAddress apIP(192, 168, 2, 1);
+const IPAddress gateway(255, 255, 255, 0);
 
 // device -> 11 pin -> MQTT
 char msgJson[100];
@@ -81,17 +94,30 @@ void pinTrigger(uint8_t pinControl, uint8_t pinValue)
 
 String wifi2str()
 {
-    char msgbuffer[200];
-    char *msg = "{\"ssid\":\"%s\", \"password\":\"%s\"}";
-    sprintf(msgbuffer, msg, wifiSSID, wifiPassword);
-    return msgbuffer;
+    String msgContent = "{\"ssid\":\"";
+    msgContent += wifiSSID;
+    msgContent += "\", \"password\":\"";
+    msgContent += wifiPassword;
+    msgContent += "\"}";
+    return msgContent;
 }
 String config2str()
 {
-    char msgbuffer[200];
-    char *msg = "{\"productID\":\"%s\", \"deviceID\":\"%s\", \"password\":\"%s\", \"interval\":\"%s\"}";
-    sprintf(msgbuffer, msg, onenetProductID, onenetDeviceID, onenetPassword, onenetTransferInterval);
-    return msgbuffer;
+    String msgContent = "{\"productID\":\"";
+    msgContent += onenetProductID;
+
+    msgContent += "\", \"deviceID\":\"";
+    msgContent += onenetDeviceID;
+
+    msgContent += "\", \"password\":\"";
+    msgContent += onenetPassword;
+
+    msgContent += "\", \"interval\":\"";
+    msgContent += onenetTransferInterval;
+
+    msgContent += "\"}";
+
+    return msgContent;
 }
 String configFilestr(File file)
 {
@@ -397,7 +423,7 @@ boolean mqttConnect()
     mqttClient.setCallback(mqttCallback);
     if (mqttClient.connected())
     {
-        Serial.printf("OneNet is connected to %s\n", onenetDeviceID);
+        Serial.printf("OneNet connected to %s\n", onenetDeviceID);
     }
     return true;
 }
@@ -557,9 +583,10 @@ String getQueryParam(AsyncWebServerRequest *request, String targetQueryKey)
 }
 void configureWebServer()
 {
+
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-              AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
+              AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
               response->addHeader("Content-Encoding", "gzip");
               request->send(response); });
     server.on("/storage", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -652,7 +679,6 @@ void configureWebServer()
         // save wifi
         wifiSSID = getQueryParam(request, "ssid");
         wifiPassword = getQueryParam(request, "password");
-
         const String wifiContent = wifi2str();
         saveJson(wifiContent.c_str(), wifiPath.c_str());
 
@@ -718,19 +744,92 @@ void configureWebServer()
     server.onNotFound(handleNotFound);
 }
 
+void firmwareUpdate(void)
+{
+    WiFiClientSecure client;
+    client.setCACert(rootCACertificate);
+    t_httpUpdate_return ret = httpUpdate.update(client, URL_fw_Bin);
+    switch (ret)
+    {
+    case HTTP_UPDATE_FAILED:
+        Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+        break;
+    case HTTP_UPDATE_NO_UPDATES:
+        Serial.println("HTTP_UPDATE_NO_UPDATES");
+        break;
+    case HTTP_UPDATE_OK:
+        Serial.println("HTTP_UPDATE_OK");
+        break;
+    }
+}
+
+int FirmwareVersionCheck(void)
+{
+    String payload;
+    int httpCode;
+    String fwurl = "";
+    fwurl += URL_fw_Version;
+    // fwurl += "?";
+    // fwurl += String(rand());
+    Serial.println(fwurl);
+    WiFiClientSecure *client = new WiFiClientSecure;
+    if (client)
+    {
+        client->setCACert(rootCACertificate);
+        // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is
+        HTTPClient https;
+        if (https.begin(*client, fwurl))
+        { // HTTPS
+            Serial.print("[HTTPS] GET...\n");
+            // start connection and send HTTP header
+            delay(100);
+            httpCode = https.GET();
+            delay(100);
+            if (httpCode == HTTP_CODE_OK) // if version received
+            {
+                payload = https.getString(); // save received version
+            }
+            else
+            {
+                Serial.print("error in downloading version file:");
+                Serial.println(httpCode);
+            }
+            https.end();
+        }
+        delete client;
+    }
+    if (httpCode == HTTP_CODE_OK) // if version received
+    {
+        payload.trim();
+        if (payload.equals(FirmwareVer))
+        {
+            Serial.printf("\nDevice already on latest firmware version:%s\n", FirmwareVer);
+            return 0;
+        }
+        else
+        {
+            Serial.println(payload);
+            Serial.println("New firmware detected");
+            return 1;
+        }
+    }
+    return 0;
+}
+
 boolean APmode = false;
 
 void setup()
 {
     Serial.begin(115200);
-    // Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
-    // Serial2.begin(9600);
+    Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
     if (!LittleFS.begin())
     {
         Serial.println("An Error has occurred while mounting LittleFS");
         return;
     }
+
+    WiFi.disconnect();
     pinMode(CONFIG_TRIGGER_PIN, INPUT);
     if (digitalRead(CONFIG_TRIGGER_PIN) == LOW)
     {
@@ -748,20 +847,24 @@ void setup()
     readConfig();
     readWiFi();
 
-    configureWebServer();
-
     if (APmode)
     {
-        WiFi.disconnect();
-        delay(1000);
-
         Serial.println("Start Config Portal");
 
         const String apName = "ESP32-" + WiFi.macAddress();
         WiFi.softAP(apName);
+        WiFi.softAPConfig(apIP, apIP, gateway);
+
+        configureWebServer();
+
+        dnsServer.start(53, "*", WiFi.softAPIP());
+        // server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
 
         Serial.print("AP IP address: ");
         Serial.println(WiFi.softAPIP());
+
+        server.on("*", HTTP_GET, [](AsyncWebServerRequest *request)
+                  { request->redirect("http://" + apIP.toString()); });
         server.begin();
     }
     else
@@ -792,6 +895,13 @@ void setup()
             }
         }
 
+        Serial.print("Active firmware version:");
+        Serial.println(FirmwareVer);
+        if (FirmwareVersionCheck())
+        {
+            firmwareUpdate();
+        }
+
         wifiConnect();
         if (WiFi.status() == WL_CONNECTED)
         {
@@ -800,17 +910,20 @@ void setup()
             mqttConnect();
         }
     }
+    Serial.println("=================================");
 }
 
 unsigned long previousMillis = 0;
-const unsigned long interval = 10000; // 10 seconds
+// const unsigned long interval = 10000; // 10 seconds
 String serialBuffer;
 void loop()
 {
-    // while (Serial2.available())
-    // {
-    //     Serial.println(Serial2.readString());
-    // }
+    while (Serial2.available())
+    {
+        const int d = Serial2.read();
+        Serial.print((char)d);
+        Serial2.write(d);
+    }
 
     while (Serial.available())
     {
@@ -826,10 +939,13 @@ void loop()
     }
 
     if (APmode)
+    {
+        dnsServer.processNextRequest();
         return;
+    }
 
     unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= interval)
+    if (currentMillis - previousMillis >= onenetTransferInterval.toInt())
     {
         if (WiFi.status() != WL_CONNECTED)
         {
