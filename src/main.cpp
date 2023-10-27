@@ -64,7 +64,7 @@ const int mqttPort = 6002;                // port number                        
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 const IPAddress apIP(192, 168, 2, 1);
-const IPAddress gateway(255, 255, 255, 0);
+const IPAddress subnetMask(255, 255, 255, 0);
 
 // device -> 11 pin -> MQTT
 char msgJson[100];
@@ -741,6 +741,11 @@ void configureWebServer()
         "/import", HTTP_POST, [](AsyncWebServerRequest *request) {},
         handleUpload);
 
+    // server.on("/tailwindcss_3.3.3.js", HTTP_GET, [](AsyncWebServerRequest *request)
+    //           {
+    //             String js = readFileContent("/tailwindcss_3.3.3.js");
+    //     request->send(200, "text/javascript", js); });
+
     server.onNotFound(handleNotFound);
 }
 
@@ -853,7 +858,7 @@ void setup()
 
         const String apName = "ESP32-" + WiFi.macAddress();
         WiFi.softAP(apName);
-        WiFi.softAPConfig(apIP, apIP, gateway);
+        WiFi.softAPConfig(apIP, apIP, subnetMask);
 
         configureWebServer();
 
@@ -863,7 +868,7 @@ void setup()
         Serial.print("AP IP address: ");
         Serial.println(WiFi.softAPIP());
 
-        server.on("*", HTTP_GET, [](AsyncWebServerRequest *request)
+        server.on("*", HTTP_ANY, [](AsyncWebServerRequest *request)
                   { request->redirect("http://" + apIP.toString()); });
         server.begin();
     }
