@@ -1,0 +1,1 @@
+#define fwURL "http://www.comp.hkbu.edu.hk/~silver/malt/fw.bin"

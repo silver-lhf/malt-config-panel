@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
-#include <DNSServer.h>
-// #include <fileHelper.h>
+// #include <DNSServer.h>
+#include <fileHelper.h>
 
 #include <HTTPClient.h>
 #include <HTTPUpdate.h>
@@ -38,8 +38,8 @@ const char *thingsboardPassword = "";
 const char *otaTopic = "v1/devices/me/attributes";
 
 boolean APmode = false;
-String wifiSSID = "HKBU-DEV";
-String wifiPassword = "kennycheng";
+String wifiSSID = "";
+String wifiPassword = "";
 
 String onenetProductID = "";
 String onenetDeviceID = "";
@@ -64,7 +64,7 @@ boolean pinEventTriggerEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t pinEventTriggerType[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t pinEventTriggerValue[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-DNSServer dnsServer;
+// DNSServer dnsServer;
 AsyncWebServer server(80);
 WiFiClient wifiClient;
 PubSubClient thingsboardClient(wifiClient);
@@ -137,141 +137,141 @@ String configFilestr(File file)
 
     return ret;
 }
-// String readPin()
-// {
-//     String pinContent;
-//     if (!LittleFS.exists(pinPath))
-//     {
-//         Serial.println("Create Pin File");
-//         pinContent = "[";
+String readPin()
+{
+    String pinContent;
+    if (!LittleFS.exists(pinPath))
+    {
+        Serial.println("Create Pin File");
+        pinContent = "[";
 
-//         for (int i = 0; i < PIN_NUMBER; i++)
-//         {
-//             pinContent += "{";
+        for (int i = 0; i < PIN_NUMBER; i++)
+        {
+            pinContent += "{";
 
-//             pinContent += "\"pin\": ";
-//             pinContent += pin[i];
-//             pinContent += ",";
+            pinContent += "\"pin\": ";
+            pinContent += pin[i];
+            pinContent += ",";
 
-//             pinContent += "\"pinTopic\": \"";
-//             pinContent += pinTopic[i];
-//             pinContent += "\",";
+            pinContent += "\"pinTopic\": \"";
+            pinContent += pinTopic[i];
+            pinContent += "\",";
 
-//             pinContent += "\"pinEnable\": ";
-//             pinContent += pinEnable[i];
-//             pinContent += ",";
+            pinContent += "\"pinEnable\": ";
+            pinContent += pinEnable[i];
+            pinContent += ",";
 
-//             pinContent += "\"pinReadWrite\": ";
-//             pinContent += pinReadWrite[i];
-//             pinContent += ",";
+            pinContent += "\"pinReadWrite\": ";
+            pinContent += pinReadWrite[i];
+            pinContent += ",";
 
-//             pinContent += "\"pinEventTriggerEnable\": ";
-//             pinContent += pinEventTriggerEnable[i];
-//             pinContent += ",";
+            pinContent += "\"pinEventTriggerEnable\": ";
+            pinContent += pinEventTriggerEnable[i];
+            pinContent += ",";
 
-//             pinContent += "\"pinEventTriggerType\": ";
-//             pinContent += pinEventTriggerType[i];
-//             pinContent += ",";
+            pinContent += "\"pinEventTriggerType\": ";
+            pinContent += pinEventTriggerType[i];
+            pinContent += ",";
 
-//             pinContent += "\"pinEventTriggerValue\": ";
-//             pinContent += pinEventTriggerValue[i];
+            pinContent += "\"pinEventTriggerValue\": ";
+            pinContent += pinEventTriggerValue[i];
 
-//             pinContent += "}";
+            pinContent += "}";
 
-//             if (i < sizeof(pin) - 1)
-//             {
-//                 pinContent += ",";
-//             }
-//         }
-//         pinContent += "]";
-//         saveJson(pinContent.c_str(), pinPath.c_str());
-//     }
-//     else
-//     {
-//         pinContent = readJson(pinPath.c_str());
+            if (i < sizeof(pin) - 1)
+            {
+                pinContent += ",";
+            }
+        }
+        pinContent += "]";
+        saveJson(pinContent.c_str(), pinPath.c_str());
+    }
+    else
+    {
+        pinContent = readJson(pinPath.c_str());
 
-//         StaticJsonDocument<2048> doc;
-//         DeserializationError error = deserializeJson(doc, pinContent);
-//         if (error)
-//         {
-//             Serial.print("Parsing failed: ");
-//             Serial.println(error.c_str());
-//             return "Error on Parsing";
-//         }
+        StaticJsonDocument<2048> doc;
+        DeserializationError error = deserializeJson(doc, pinContent);
+        if (error)
+        {
+            Serial.print("Parsing failed: ");
+            Serial.println(error.c_str());
+            return "Error on Parsing";
+        }
 
-//         JsonArray array = doc.as<JsonArray>();
-//         for (int i = 0; i < array.size(); i++)
-//         {
-//             JsonObject obj = array[i];
+        JsonArray array = doc.as<JsonArray>();
+        for (int i = 0; i < array.size(); i++)
+        {
+            JsonObject obj = array[i];
 
-//             pinEnable[i] = obj["pinEnable"].as<boolean>();
-//             pinReadWrite[i] = obj["pinReadWrite"].as<uint8_t>();
-//             pinTopic[i] = obj["pinTopic"].as<String>();
-//             pinEventTriggerEnable[i] = obj["pinEventTriggerEnable"].as<boolean>();
-//             pinEventTriggerType[i] = obj["pinEventTriggerType"].as<uint8_t>();
-//             pinEventTriggerValue[i] = obj["pinEventTriggerValue"].as<uint8_t>();
-//         }
-//     }
-//     return pinContent;
-// }
-// String readConfig()
-// {
-//     String configContent;
-//     if (!LittleFS.exists(configPath))
-//     {
-//         // create file if not exist
-//         Serial.println("Create Config File");
-//         configContent = config2str();
-//         saveJson(configContent.c_str(), configPath.c_str());
-//     }
-//     else
-//     {
-//         // read file to config
-//         configContent = readJson(configPath.c_str());
+            pinEnable[i] = obj["pinEnable"].as<boolean>();
+            pinReadWrite[i] = obj["pinReadWrite"].as<uint8_t>();
+            pinTopic[i] = obj["pinTopic"].as<String>();
+            pinEventTriggerEnable[i] = obj["pinEventTriggerEnable"].as<boolean>();
+            pinEventTriggerType[i] = obj["pinEventTriggerType"].as<uint8_t>();
+            pinEventTriggerValue[i] = obj["pinEventTriggerValue"].as<uint8_t>();
+        }
+    }
+    return pinContent;
+}
+String readConfig()
+{
+    String configContent;
+    if (!LittleFS.exists(configPath))
+    {
+        // create file if not exist
+        Serial.println("Create Config File");
+        configContent = config2str();
+        saveJson(configContent.c_str(), configPath.c_str());
+    }
+    else
+    {
+        // read file to config
+        configContent = readJson(configPath.c_str());
 
-//         StaticJsonDocument<256> doc;
-//         DeserializationError error = deserializeJson(doc, configContent);
-//         if (error)
-//         {
-//             Serial.print("Parsing failed: ");
-//             Serial.println(error.c_str());
-//             return "Error on Parsing";
-//         }
-//         onenetProductID = doc["productID"].as<String>();
-//         onenetDeviceID = doc["deviceID"].as<String>();
-//         onenetPassword = doc["password"].as<String>();
-//         onenetTransferInterval = doc["interval"].as<String>();
-//     }
-//     return configContent;
-// }
-// String readWiFi()
-// {
-//     String wifiContent;
-//     if (!LittleFS.exists(wifiPath))
-//     {
-//         // create file if not exist
-//         Serial.println("Create WiFi File");
-//         wifiContent = wifi2str();
-//         saveJson(wifiContent.c_str(), wifiPath.c_str());
-//     }
-//     else
-//     {
-//         // read file to config
-//         wifiContent = readJson(wifiPath.c_str());
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, configContent);
+        if (error)
+        {
+            Serial.print("Parsing failed: ");
+            Serial.println(error.c_str());
+            return "Error on Parsing";
+        }
+        onenetProductID = doc["productID"].as<String>();
+        onenetDeviceID = doc["deviceID"].as<String>();
+        onenetPassword = doc["password"].as<String>();
+        onenetTransferInterval = doc["interval"].as<String>();
+    }
+    return configContent;
+}
+String readWiFi()
+{
+    String wifiContent;
+    if (!LittleFS.exists(wifiPath))
+    {
+        // create file if not exist
+        Serial.println("Create WiFi File");
+        wifiContent = wifi2str();
+        saveJson(wifiContent.c_str(), wifiPath.c_str());
+    }
+    else
+    {
+        // read file to config
+        wifiContent = readJson(wifiPath.c_str());
 
-//         StaticJsonDocument<128> doc;
-//         DeserializationError error = deserializeJson(doc, wifiContent);
-//         if (error)
-//         {
-//             Serial.print("Parsing failed: ");
-//             Serial.println(error.c_str());
-//             return "Error on Parsing";
-//         }
-//         wifiSSID = doc["ssid"].as<String>();
-//         wifiPassword = doc["password"].as<String>();
-//     }
-//     return wifiContent;
-// }
+        StaticJsonDocument<128> doc;
+        DeserializationError error = deserializeJson(doc, wifiContent);
+        if (error)
+        {
+            Serial.print("Parsing failed: ");
+            Serial.println(error.c_str());
+            return "Error on Parsing";
+        }
+        wifiSSID = doc["ssid"].as<String>();
+        wifiPassword = doc["password"].as<String>();
+    }
+    return wifiContent;
+}
 
 bool FirmwareVersionCheck()
 {
@@ -375,63 +375,63 @@ void handleNotFound(AsyncWebServerRequest *request)
     Serial.println("NOT FOUND");
     request->send(404, "text/plain", "Not found");
 }
-// void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-// {
-//     Serial.println(filename);
-//     Serial.println(index);
-//     Serial.println(len);
-//     Serial.println(final);
+void handleUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+{
+    Serial.println(filename);
+    Serial.println(index);
+    Serial.println(len);
+    Serial.println(final);
 
-//     Serial.println("Import ... ");
-//     if (!index)
-//     {
-//         Serial.println("Trigger Index");
-//         request->_tempFile = LittleFS.open("/storage/" + filename, "w");
-//     }
-//     if (len)
-//     {
-//         Serial.println("Trigger len");
-//         request->_tempFile.write(data, len);
-//     }
+    Serial.println("Import ... ");
+    if (!index)
+    {
+        Serial.println("Trigger Index");
+        request->_tempFile = LittleFS.open("/storage/" + filename, "w");
+    }
+    if (len)
+    {
+        Serial.println("Trigger len");
+        request->_tempFile.write(data, len);
+    }
 
-//     if (final)
-//     {
-//         Serial.println("Trigger Final");
-//         request->_tempFile.close();
+    if (final)
+    {
+        Serial.println("Trigger Final");
+        request->_tempFile.close();
 
-//         String filePath = "/storage/";
-//         filePath.concat(filename);
-//         Serial.println(filePath);
+        String filePath = "/storage/";
+        filePath.concat(filename);
+        Serial.println(filePath);
 
-//         String fileContent = readJson(filePath.c_str());
-//         Serial.println(fileContent);
+        String fileContent = readJson(filePath.c_str());
+        Serial.println(fileContent);
 
-//         StaticJsonDocument<4096> doc;
-//         DeserializationError error = deserializeJson(doc, fileContent);
-//         if (error)
-//         {
-//             Serial.print("Parsing failed: ");
-//             Serial.println(error.c_str());
-//             return;
-//         }
-//         const String pinContent = doc["pin"].as<String>();
-//         saveJson(pinContent.c_str(), pinPath.c_str());
+        StaticJsonDocument<4096> doc;
+        DeserializationError error = deserializeJson(doc, fileContent);
+        if (error)
+        {
+            Serial.print("Parsing failed: ");
+            Serial.println(error.c_str());
+            return;
+        }
+        const String pinContent = doc["pin"].as<String>();
+        saveJson(pinContent.c_str(), pinPath.c_str());
 
-//         const String configContent = doc["config"].as<String>();
-//         saveJson(configContent.c_str(), configPath.c_str());
+        const String configContent = doc["config"].as<String>();
+        saveJson(configContent.c_str(), configPath.c_str());
 
-//         const String wifiContent = doc["wifi"].as<String>();
-//         saveJson(wifiContent.c_str(), wifiPath.c_str());
+        const String wifiContent = doc["wifi"].as<String>();
+        saveJson(wifiContent.c_str(), wifiPath.c_str());
 
-//         delay(100);
+        delay(100);
 
-//         readPin();
-//         readConfig();
-//         readWiFi();
+        readPin();
+        readConfig();
+        readWiFi();
 
-//         request->send(200);
-//     }
-// }
+        request->send(200);
+    }
+}
 
 boolean wifiConnect()
 {
@@ -571,72 +571,72 @@ boolean thingsboardConnect()
 //     }
 // }
 
-// int listDirectoryCount(String path)
-// {
-//     int fileCount = 0;
-//     File root = LittleFS.open(path);
-//     File file = root.openNextFile();
-//     while (file)
-//     {
-//         fileCount++;
-//         file = root.openNextFile();
-//     }
-//     return fileCount;
-// }
-// String listDirectory(String path)
-// {
-//     File root = LittleFS.open(path);
-//     File file = root.openNextFile();
-//     String ret = "{";
-//     while (file)
-//     {
-//         ret += "\"";
-//         ret += file.name();
-//         ret += "\":";
+int listDirectoryCount(String path)
+{
+    int fileCount = 0;
+    File root = LittleFS.open(path);
+    File file = root.openNextFile();
+    while (file)
+    {
+        fileCount++;
+        file = root.openNextFile();
+    }
+    return fileCount;
+}
+String listDirectory(String path)
+{
+    File root = LittleFS.open(path);
+    File file = root.openNextFile();
+    String ret = "{";
+    while (file)
+    {
+        ret += "\"";
+        ret += file.name();
+        ret += "\":";
 
-//         if (file.isDirectory())
-//         {
-//             String nextPath = path + "/" + file.name();
-//             ret += listDirectory(nextPath);
-//         }
-//         else
-//         {
-//             ret += configFilestr(file);
-//         }
+        if (file.isDirectory())
+        {
+            String nextPath = path + "/" + file.name();
+            ret += listDirectory(nextPath);
+        }
+        else
+        {
+            ret += configFilestr(file);
+        }
 
-//         file = root.openNextFile();
-//         if (file)
-//         {
-//             ret += ",";
-//         }
-//     }
+        file = root.openNextFile();
+        if (file)
+        {
+            ret += ",";
+        }
+    }
 
-//     ret += "}";
-//     return ret;
-// }
-// String readFileContent(String filePath)
-// {
+    ret += "}";
+    return ret;
+}
+String readFileContent(String filePath)
+{
 
-//     Serial.print("Reading File ... ");
-//     Serial.println(filePath);
+    Serial.print("Reading File ... ");
+    Serial.println(filePath);
 
-//     String ret;
+    String ret;
 
-//     File file = LittleFS.open(filePath, "r");
-//     if (!file)
-//     {
-//         Serial.println("Failed to open file");
-//         return ret;
-//     }
+    File file = LittleFS.open(filePath, "r");
+    if (!file)
+    {
+        Serial.println("Failed to open file");
+        return ret;
+    }
 
-//     while (file.available())
-//     {
-//         ret += (char)file.read();
-//     }
+    while (file.available())
+    {
+        ret += (char)file.read();
+    }
 
-//     file.close();
-//     return ret;
-// }
+    file.close();
+    return ret;
+}
 
 String getQueryParam(AsyncWebServerRequest *request, String targetQueryKey)
 {
@@ -656,45 +656,45 @@ String getQueryParam(AsyncWebServerRequest *request, String targetQueryKey)
 }
 void configureWebServer()
 {
-    // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-    //           {
-    //           AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
-    //           response->addHeader("Content-Encoding", "gzip");
-    //           request->send(response); });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+              AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
+              response->addHeader("Content-Encoding", "gzip");
+              request->send(response); });
     server.on("/storage", HTTP_GET, [](AsyncWebServerRequest *request)
               {
                 int paramsNr = request->params();
                 if (paramsNr > 0){
                     String filePath = "/storage/"+getQueryParam(request, "filepath");
-                    // String fileContent = readFileContent(filePath);
-                    // request->send(200, "text/plain", fileContent);
+                    String fileContent = readFileContent(filePath);
+                    request->send(200, "text/plain", fileContent);
                 }else
                 {
-                    // String ret = listDirectory("/storage");
-                    // request->send(200, "text/plain", ret);
+                    String ret = listDirectory("/storage");
+                    request->send(200, "text/plain", ret);
         } });
-    // server.on(
-    //     "/api/save", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
-    //     {
-    //                 String apiName = getQueryParam(request, "apiName");
+    server.on(
+        "/api/save", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
+        {
+                    String apiName = getQueryParam(request, "apiName");
 
-    //                 String apiJson;
-    //                 for (size_t i = 0; i < len; i++) {
-    //                     apiJson += char(data[i]);
-    //                 }
+                    String apiJson;
+                    for (size_t i = 0; i < len; i++) {
+                        apiJson += char(data[i]);
+                    }
 
-    //                 int fileIndex = listDirectoryCount(apiFolder) + 1;
-    //                 String jsonPath = apiFolder + "api_"+fileIndex+"_"+apiName+".json"; //"_"+datetime+
+                    int fileIndex = listDirectoryCount(apiFolder) + 1;
+                    String jsonPath = apiFolder + "api_"+fileIndex+"_"+apiName+".json"; //"_"+datetime+
 
-    //                 Serial.print("Save API ... ");
-    //                 Serial.println(jsonPath);
+                    Serial.print("Save API ... ");
+                    Serial.println(jsonPath);
 
-    //                 saveJson(apiJson.c_str(), jsonPath.c_str());
-    //                 request->send(200, "text/plain", jsonPath); });
-    // server.on("/api/load", HTTP_GET, [](AsyncWebServerRequest *request)
-    //           {
-    //     String ret = listDirectory("/storage/api/");
-    //     request->send(200, "text/plain", ret); });
+                    saveJson(apiJson.c_str(), jsonPath.c_str());
+                    request->send(200, "text/plain", jsonPath); });
+    server.on("/api/load", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+        String ret = listDirectory("/storage/api/");
+        request->send(200, "text/plain", ret); });
 
     server.on(
         "/pin/save", HTTP_POST, [](AsyncWebServerRequest *request) {}, NULL, [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
@@ -715,7 +715,7 @@ void configureWebServer()
         if (body_len == total)
         {
             Serial.println("Save PinConfig ... ");
-            // saveJson(body_buf.c_str(), pinPath.c_str());
+            saveJson(body_buf.c_str(), pinPath.c_str());
             request->send(200, "text/plain", pinPath);
 
             // ESP.restart();
@@ -733,8 +733,8 @@ void configureWebServer()
         onenetPassword = getQueryParam(request, "password");
         onenetTransferInterval = getQueryParam(request, "interval");
 
-        // const String configContent = config2str();
-        // saveJson(configContent.c_str(), configPath.c_str());
+        const String configContent = config2str();
+        saveJson(configContent.c_str(), configPath.c_str());
 
         request->send(200, "text/plain", "OK");
     } else {
@@ -742,7 +742,6 @@ void configureWebServer()
         const String msg = config2str();
         request->send(200, "text/plain", msg);
     } });
-
     server.on(
         "/wifi", HTTP_GET, [](AsyncWebServerRequest *request)
         {
@@ -753,7 +752,7 @@ void configureWebServer()
         wifiSSID = getQueryParam(request, "ssid");
         wifiPassword = getQueryParam(request, "password");
         const String wifiContent = wifi2str();
-        // saveJson(wifiContent.c_str(), wifiPath.c_str());
+        saveJson(wifiContent.c_str(), wifiPath.c_str());
 
         request->send(200, "text/plain", "OK");
     } else {
@@ -761,58 +760,58 @@ void configureWebServer()
         const String msg = wifi2str();
         request->send(200, "text/plain", msg);
     } });
-    // server.on("/export", HTTP_GET, [](AsyncWebServerRequest *request)
-    //           {
-    //             Serial.println("Export ... ");
-    //             // Open the files
-    //             File pinFile = LittleFS.open(pinPath, "r");
-    //             File configFile = LittleFS.open(configPath, "r");
-    //             File wifiFile = LittleFS.open(wifiPath, "r");
-    //             const char* exportPath = "/export.json";
+    server.on("/export", HTTP_GET, [](AsyncWebServerRequest *request)
+              {
+                Serial.println("Export ... ");
+                // Open the files
+                File pinFile = LittleFS.open(pinPath, "r");
+                File configFile = LittleFS.open(configPath, "r");
+                File wifiFile = LittleFS.open(wifiPath, "r");
+                const char* exportPath = "/export.json";
 
-    //             if (!pinFile || !configFile || !wifiFile)
-    //             {
-    //                 request->send(404, "text/plain", "File Not Found");
-    //                 return;
-    //             }
+                if (!pinFile || !configFile || !wifiFile)
+                {
+                    request->send(404, "text/plain", "File Not Found");
+                    return;
+                }
 
-    //             File exportFile = LittleFS.open(exportPath, "w");
-    //             if (!exportFile)
-    //             {
-    //                 request->send(500, "text/plain", "Failed to create combined file");
-    //                 return;
-    //             }
+                File exportFile = LittleFS.open(exportPath, "w");
+                if (!exportFile)
+                {
+                    request->send(500, "text/plain", "Failed to create combined file");
+                    return;
+                }
 
-    //             exportFile.print("{\"pin\":");
-    //             while (pinFile.available())
-    //             {
-    //                 exportFile.write(pinFile.read());
-    //             }
-    //             exportFile.print(",");
+                exportFile.print("{\"pin\":");
+                while (pinFile.available())
+                {
+                    exportFile.write(pinFile.read());
+                }
+                exportFile.print(",");
 
-    //             exportFile.print("\"config\":");
-    //             while (configFile.available())
-    //             {
-    //                 exportFile.write(configFile.read());
-    //             }
-    //             exportFile.print(",");
+                exportFile.print("\"config\":");
+                while (configFile.available())
+                {
+                    exportFile.write(configFile.read());
+                }
+                exportFile.print(",");
 
-    //             exportFile.print("\"wifi\":");
-    //             while (wifiFile.available())
-    //             {
-    //                 exportFile.write(wifiFile.read());
-    //             }
-    //             exportFile.print("}");
+                exportFile.print("\"wifi\":");
+                while (wifiFile.available())
+                {
+                    exportFile.write(wifiFile.read());
+                }
+                exportFile.print("}");
 
-    //             exportFile.close();
-    //             pinFile.close();
-    //             configFile.close();
-    //             wifiFile.close();
+                exportFile.close();
+                pinFile.close();
+                configFile.close();
+                wifiFile.close();
 
-    //             request->send(LittleFS, exportPath, "text/plain"); });
-    // server.on(
-    //     "/import", HTTP_POST, [](AsyncWebServerRequest *request) {},
-    //     handleUpload);
+                request->send(LittleFS, exportPath, "text/plain"); });
+    server.on(
+        "/import", HTTP_POST, [](AsyncWebServerRequest *request) {},
+        handleUpload);
 
     // server.on("/tailwindcss_3.3.3.js", HTTP_GET, [](AsyncWebServerRequest *request)
     //           {
@@ -824,13 +823,13 @@ void configureWebServer()
 
 void setup()
 {
-    Serial.begin(9600);
+    Serial.begin(115200);
     // Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
     if (!LittleFS.begin())
     {
         Serial.println("An Error has occurred while mounting LittleFS");
-        return;
+        // return;
     }
 
     WiFi.disconnect();
@@ -847,9 +846,9 @@ void setup()
         WiFi.mode(WIFI_STA);
     }
 
-    // readPin();
-    // readConfig();
-    // readWiFi();
+    readPin();
+    readConfig();
+    readWiFi();
 
     if (APmode)
     {
@@ -861,7 +860,7 @@ void setup()
 
         configureWebServer();
 
-        dnsServer.start(53, "*", WiFi.softAPIP());
+        // dnsServer.start(53, "*", WiFi.softAPIP());
         // server.addHandler(new CaptiveRequestHandler()).setFilter(ON_AP_FILTER);
 
         Serial.print("AP IP address: ");
@@ -939,7 +938,7 @@ void loop()
 
     if (APmode)
     {
-        dnsServer.processNextRequest();
+        // dnsServer.processNextRequest();
         return;
     }
 
@@ -958,20 +957,18 @@ void loop()
             // if (!onenetClient.connected())
             // {
             //     onenetConnect();
-            // }else
-            // {
-            // sendPinValue();
             // }
+            // sendPinValue();
 
-            if (!thingsboardClient.connected())
-            {
-                thingsboardConnect();
-            }
         }
         previousMillis = currentMillis;
     }
     // onenetClient.loop();
-
+    
+    if (!thingsboardClient.connected())
+    {
+        thingsboardConnect();
+    }
     thingsboardClient.loop();
     delay(100);
 }
