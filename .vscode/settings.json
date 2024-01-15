@@ -13,7 +13,9 @@
     "tuple": "cpp",
     "type_traits": "cpp",
     "utility": "cpp",
-    "string": "cpp"
+    "string": "cpp",
+    "bitset": "cpp",
+    "string_view": "cpp"
   },
   "idf.portWin": "COM4"
 }
