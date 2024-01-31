@@ -19,13 +19,13 @@
 #define RXD2 9
 #define TXD2 10
 
-#define fwVersion 2.0
+#define fwVersion 1.0
 
 const String apiFolder = "/storage/api/";
 const String pinPath = "/storage/pin.json";
 const String configPath = "/storage/config.json";
 const String wifiPath = "/storage/wifi.json";
-const String logPath = "/log";
+const String logPath = "/storage/log.txt";
 const IPAddress apIP(192, 168, 2, 1);
 const IPAddress subnetMask(255, 255, 255, 0);
 const uint8_t pin[] = {2, 13, 14, 15, 19, 21, 25, 32, 33};
@@ -39,8 +39,8 @@ const char *thingsboardPassword = "";
 const char *otaTopic = "v1/devices/me/attributes";
 
 boolean APmode = false;
-String wifiSSID = "HKBU-DEV";
-String wifiPassword = "kennycheng";
+String wifiSSID = "";
+String wifiPassword = "";
 
 String onenetProductID = "";
 String onenetDeviceID = "";
@@ -102,11 +102,11 @@ void pinTrigger(uint8_t pinControl, uint8_t pinValue)
 
 void Log(String content){
     File file = LittleFS.open(logPath, "a+");
-    file.println(content);
+    file.print(content);
     file.close();
     delay(100);
 
-    Serial.println(content);
+    Serial.print(content);
 }
 void Logln(String content){
     const String _content = content + "\n";
@@ -294,7 +294,7 @@ bool FirmwareVersionCheck()
 }
 void firmwareUpdate()
 {
-    Log("Start FirmwareUpdate");
+    Logln("Start FirmwareUpdate");
     Logln(fwURL);
     
     WiFiClient client;
@@ -305,7 +305,7 @@ void firmwareUpdate()
         Log("HTTP_UPDATE_FAILD Error");
         Log(String(httpUpdate.getLastError()));
         Logln(httpUpdate.getLastErrorString().c_str());
-        Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
+        // Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s\n", httpUpdate.getLastError(), httpUpdate.getLastErrorString().c_str());
         break;
     case HTTP_UPDATE_NO_UPDATES:
         Logln("HTTP_UPDATE_NO_UPDATES");
@@ -781,6 +781,8 @@ void configureWebServer()
         // save wifi
         wifiSSID = getQueryParam(request, "ssid");
         wifiPassword = getQueryParam(request, "password");
+        Log("Save Wifi ... ");
+        Logln(wifiPath);
         const String wifiContent = wifi2str();
         saveJson(wifiContent.c_str(), wifiPath.c_str());
 
