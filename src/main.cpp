@@ -19,7 +19,7 @@
 #define RXD2 9
 #define TXD2 10
 
-#define fwVersion 1.0
+#define fwVersion 2.1
 
 const String apiFolder = "/storage/api/";
 const String pinPath = "/storage/pin.json";
