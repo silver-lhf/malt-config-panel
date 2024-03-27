@@ -28,7 +28,7 @@ function App() {
 
   useEffect(() => {
     // code to run after render goes here
-    console.log("crazy react");
+    console.log("crazy reacttttttttttttt");
   }, []);
 
   return (

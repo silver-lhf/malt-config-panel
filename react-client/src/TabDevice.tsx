@@ -1,4 +1,13 @@
 import { useEffect, useState } from "react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  LineElement,
+  PointElement,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
+ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement);
 
 interface PinConfig {
   pin: number;
@@ -10,8 +19,15 @@ interface PinConfig {
   pinEventTriggerValue: number;
 }
 
-export default function TabAPI() {
+interface PinChart {
+  pin: string;
+  pinValue: number[];
+  chartData: any;
+}
+
+export default function TabDevice() {
   const [pinConfig, setPinConfig] = useState<PinConfig[]>([]);
+  const [pinChart, setPinChart] = useState<PinChart[]>([]);
 
   function handlePinEnableChange(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -42,7 +58,6 @@ export default function TabAPI() {
     );
     setPinConfig(newState);
   }
-
   function handlePinEventTriggerEnableChange(
     event: React.ChangeEvent<HTMLInputElement>,
     item: PinConfig
@@ -65,7 +80,6 @@ export default function TabAPI() {
     );
     setPinConfig(newState);
   }
-
   function handlePinEventTriggerValueChange(
     event: React.ChangeEvent<HTMLInputElement>,
     item: PinConfig
@@ -82,7 +96,6 @@ export default function TabAPI() {
   }
 
   async function saveConfig(_: React.MouseEvent<HTMLElement>) {
-    console.log(pinConfig);
     let result: string;
     try {
       const res = await fetch("/pin/save", {
@@ -103,6 +116,8 @@ export default function TabAPI() {
   }
 
   useEffect(() => {
+    // return () => clearInterval(worker);
+
     // fetch files list
     fetch("/storage/?filepath=pin.json")
       .then((res) => {
@@ -111,16 +126,15 @@ export default function TabAPI() {
         }
       })
       .then((resText) => {
-        console.log(resText);
-
         if (resText === undefined) {
           return;
         }
 
         let rawJson = JSON.parse(resText);
-        let pinConfig: PinConfig[] = [];
+        let _pinConfig: PinConfig[] = [];
+        let _pinChart: PinChart[] = [];
         for (const config of rawJson) {
-          let itemObj = {
+          let itemObj: PinConfig = {
             pin: config["pin"],
             pinTopic: config["pinTopic"],
             pinEnable: config["pinEnable"] == 1 ? true : false,
@@ -130,14 +144,73 @@ export default function TabAPI() {
             pinEventTriggerType: config["pinEventTriggerType"],
             pinEventTriggerValue: config["pinEventTriggerValue"],
           };
-          pinConfig.push(itemObj);
+          _pinConfig.push(itemObj);
+
+          let chartObj: PinChart = {
+            pin: config["pin"],
+            pinValue: [],
+            chartData: {
+              labels: [],
+              datasets: [
+                {
+                  data: [],
+                  borderColor: "rgb(53, 162, 235)",
+                },
+              ],
+            },
+          };
+          _pinChart.push(chartObj);
         }
-        console.log(pinConfig);
-        setPinConfig(pinConfig);
+        setPinConfig(_pinConfig);
+        setPinChart(_pinChart);
       })
       .catch((e) => {
-        console.log(e);
+        console.error(e);
       });
+
+    //Get the updated pin value every N Second
+    const worker = setInterval(() => {
+      fetch("/pin/value")
+        .then((res) => {
+          if (res.ok) {
+            return res.text();
+          }
+        })
+        .then((resText) => {
+          if (resText === undefined) {
+            return;
+          }
+          let resJson = JSON.parse(resText);
+          let _pinChart: PinChart[] = [];
+          for (const pinNumber in resJson) {
+            let _chart = {
+              pin: pinNumber,
+              pinValue: resJson[pinNumber],
+              chartData: {
+                labels: Array.from(
+                  { length: resJson[pinNumber].length },
+                  (_, index) => index
+                ),
+                datasets: [
+                  {
+                    data: resJson[pinNumber],
+                    borderColor: "rgb(53, 162, 235)",
+                  },
+                ],
+              },
+            };
+            _pinChart.push(_chart);
+          }
+          setPinChart(_pinChart);
+        })
+        .catch((e) => {
+          console.error(e);
+        });
+    }, 5000);
+
+    return () => {
+      clearInterval(worker);
+    };
   }, []);
 
   const buttonStyle = {
@@ -165,7 +238,7 @@ export default function TabAPI() {
         {pinConfig.map(
           (
             item,
-            _ // change it into sub class
+            itemIndex // change it into sub class
           ) => (
             <div className="bg-white p-4 rounded shadow">
               <p className="flex justify-evenly">
@@ -226,6 +299,12 @@ export default function TabAPI() {
                       </span>
                     </label>
                   </div>
+                  <div className="hidden">{itemIndex}</div>
+                  {item.pinEnable && item.pinReadWrite == 0 ? (
+                    <div>
+                      <Line data={pinChart[itemIndex]["chartData"]} />
+                    </div>
+                  ) : null}
 
                   {item.pinReadWrite == 0 ? (
                     <div>
@@ -272,15 +351,9 @@ export default function TabAPI() {
                                 handlePinEventTriggerTypeChange(event, item)
                               }
                             >
-                              <option value="0">
-                                Greater than
-                              </option>
-                              <option value="1">
-                                Equal to
-                              </option>
-                              <option value="2">
-                                Less than
-                              </option>
+                              <option value="0">Greater than</option>
+                              <option value="1">Equal to</option>
+                              <option value="2">Less than</option>
                             </select>
                           </div>
 

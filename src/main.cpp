@@ -18,8 +18,11 @@
 #define WIFICONNECT_RETRY_TIMES 5
 #define RXD2 9
 #define TXD2 10
+#define MAX_PIN_VALUE_SAVED 12
 
-#define fwVersion 2.1
+// mosquitto_pub -d -q 1 -h mqtt.thingsboard.cloud -p 1883 -t v1/devices/me/telemetry -u "v6IWWoRbN1t6sIGmYZOt" -m "{temperature:25}"
+// #define fwVersion 2.1
+#define fwVersion 1.0
 
 const String apiFolder = "/storage/api/";
 const String pinPath = "/storage/pin.json";
@@ -34,7 +37,7 @@ const char *onenetServer = "47.91.203.178";            // Onenet IP address
 const int onenetPort = 6002;                           // Onenet port number                               //variable of second data
 const char *thingsboardServer = "thingsboard.cloud";
 const int thingsboardPort = 1883;
-const char *thingsboardUsername = "vNqysU5VuhevcJy1wBLv";
+const char *thingsboardUsername = "v6IWWoRbN1t6sIGmYZOt";
 const char *thingsboardPassword = "";
 const char *otaTopic = "v1/devices/me/attributes";
 
@@ -45,7 +48,9 @@ String wifiPassword = "";
 String onenetProductID = "";
 String onenetDeviceID = "";
 String onenetPassword = "";
-String onenetTransferInterval = "10000";
+int onenetTransferInterval = 10000;
+int maltPinReadingInterval = 5000;
+int maltPinRefreshingInterval = 10000;
 
 // pin-related => re-write into a class
 uint8_t pinReadWrite[] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; // 0 for read, 1 for write
@@ -64,7 +69,10 @@ String pinTopic[] = {
 boolean pinEventTriggerEnable[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t pinEventTriggerType[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t pinEventTriggerValue[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t pinIndex[PIN_NUMBER];
+uint8_t pinData[PIN_NUMBER][MAX_PIN_VALUE_SAVED];
 
+// Networking
 DNSServer dnsServer;
 AsyncWebServer server(80);
 WiFiClient wifiClient;
@@ -82,7 +90,118 @@ char msg_buf[200];
 String body_buf;
 unsigned short body_len = 0;
 
-void pinTrigger(uint8_t pinControl, uint8_t pinValue)
+// Log message to local file
+void Log(String content)
+{
+    File file = LittleFS.open(logPath, "a+");
+    file.print(content);
+    file.close();
+    delay(100);
+
+    Serial.print(content);
+}
+void Logln(String content)
+{
+    const String _content = content + "\n";
+    Log(_content);
+}
+
+// Pin Control
+void setupPin()
+{
+    for (int i = 0; i < PIN_NUMBER; i++)
+    {
+        if (pinEnable[i])
+        {
+            Log("Set Pin ");
+            if (pinReadWrite[i] == 0)
+            {
+                Log("Read, ");
+            }
+            else
+            {
+                Log("Write, ");
+            }
+            Logln(String(pin[i]));
+
+            if (pinReadWrite[i] == 0)
+            {
+                pinMode(pin[i], INPUT);
+            }
+            else
+            {
+                pinMode(pin[i], OUTPUT);
+                digitalWrite(pin[i], 0);
+            }
+        }
+    }
+}
+void sendPinValue2Onenet()
+{
+    if (onenetClient.connected())
+    {
+        uint8_t pinCount = 0;
+        String onenet_msg = "{";
+        for (int i = 0; i < sizeof(pin); i++)
+        {
+            if (pinEnable[i] && pinReadWrite[i] == 0)
+            {
+                if (pinCount > 0)
+                {
+                    onenet_msg += ",";
+                }
+                uint8_t value;
+                if (pinType[i] == 1)
+                {
+                    value = analogRead(pin[i]);
+                }
+                else
+                {
+                    value = digitalRead(pin[i]);
+                }
+                onenet_msg += "\"" + pinTopic[i] + "\":";
+                onenet_msg += value;
+                if (pinEventTriggerEnable[i])
+                {
+                    switch (pinEventTriggerType[i])
+                    {
+                    case 0:
+                        if (value > pinEventTriggerValue[i])
+                        {
+                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
+                        }
+                        break;
+                    case 1:
+                        if (value == pinEventTriggerValue[i])
+                        {
+                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
+                        }
+                        break;
+                    case 2:
+                        if (value < pinEventTriggerValue[i])
+                        {
+                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
+                        }
+                        break;
+                    }
+                }
+                pinCount += 1;
+            }
+        }
+        onenet_msg += "}";
+        const char *msgJson = onenet_msg.c_str();
+        json_len = strlen(msgJson);                                           // length of msgJson
+        msg_buf[0] = char(0x03);                                              // buffer of the data sent first part is 3
+        msg_buf[1] = char(json_len >> 8);                                     // Second part is the 8 MSB of the data
+        msg_buf[2] = char(json_len & 0xff);                                   // Third part is 8 LSB of the data
+        memcpy(msg_buf + 3, msgJson, strlen(msgJson));                        // Forth part is the data in msgJson
+        msg_buf[3 + strlen(msgJson)] = 0;                                     // Add a 0 at last
+        onenetClient.publish("$dp", (uint8_t *)msg_buf, 3 + strlen(msgJson)); // Send data
+        // Log("public message client:");
+        // Log(msgJson);
+    }
+}
+void controlPin(uint8_t pinControl, uint8_t pinValue)
 {
     for (int i = 0; i < PIN_NUMBER; i++)
     {
@@ -99,18 +218,56 @@ void pinTrigger(uint8_t pinControl, uint8_t pinValue)
         }
     }
 }
-
-void Log(String content){
-    File file = LittleFS.open(logPath, "a+");
-    file.print(content);
-    file.close();
-    delay(100);
-
-    Serial.print(content);
+void updatePinValue()
+{
+    for (uint8_t i = 0; i < PIN_NUMBER; i++)
+    {
+        if (pinEnable[i] && pinReadWrite[i] == 0)
+        {
+            uint8_t value = -1;
+            if (pinType[i] == 0)
+            {
+                value = digitalRead(pin[i]);
+            }
+            else
+            {
+                value = analogRead(pin[i]);
+            }
+            pinData[i][pinIndex[i]] = value;
+            pinIndex[i] = (pinIndex[i] + 1) % MAX_PIN_VALUE_SAVED;
+        }
+    }
 }
-void Logln(String content){
-    const String _content = content + "\n";
-    Log(_content);
+String pinValue2str()
+{
+    String msgContent = "{";
+    for (uint8_t i = 0; i < sizeof(pin); i++)
+    {
+
+        if (msgContent.length() > 1)
+        {
+            msgContent += ",";
+        }
+        msgContent += "\"" + String(pin[i]) + "\":[";
+        if (pinEnable[i] && pinReadWrite[i] == 0)
+        {
+
+            String row = "";
+            for (uint8_t valueCount = 0; valueCount < MAX_PIN_VALUE_SAVED; valueCount++)
+            {
+                uint8_t valueIndex = (valueCount + pinIndex[i]) % MAX_PIN_VALUE_SAVED;
+                row += String(pinData[i][valueIndex]);
+                if (valueCount != MAX_PIN_VALUE_SAVED - 1)
+                {
+                    row += ",";
+                }
+            }
+            msgContent += row;
+        }
+        msgContent += "]";
+    }
+    msgContent += "}";
+    return msgContent;
 }
 
 String wifi2str()
@@ -124,17 +281,23 @@ String wifi2str()
 }
 String config2str()
 {
-    String msgContent = "{\"productID\":\"";
+    String msgContent = "{\"onenetProductID\":\"";
     msgContent += onenetProductID;
 
-    msgContent += "\", \"deviceID\":\"";
+    msgContent += "\", \"onenetDeviceID\":\"";
     msgContent += onenetDeviceID;
 
-    msgContent += "\", \"password\":\"";
+    msgContent += "\", \"onenetPassword\":\"";
     msgContent += onenetPassword;
 
-    msgContent += "\", \"interval\":\"";
-    msgContent += onenetTransferInterval;
+    msgContent += "\", \"onenetTransferInterval\":\"";
+    msgContent += String(onenetTransferInterval);
+
+    msgContent += "\", \"maltPinReadingInterval\":\"";
+    msgContent += String(maltPinReadingInterval);
+
+    msgContent += "\", \"maltPinRefreshingInterval\":\"";
+    msgContent += String(maltPinRefreshingInterval);
 
     msgContent += "\"}";
 
@@ -251,10 +414,12 @@ String readConfig()
             Logln(error.c_str());
             return "Error on Parsing";
         }
-        onenetProductID = doc["productID"].as<String>();
-        onenetDeviceID = doc["deviceID"].as<String>();
-        onenetPassword = doc["password"].as<String>();
-        onenetTransferInterval = doc["interval"].as<String>();
+        onenetProductID = doc["onenetProductID"].as<String>();
+        onenetDeviceID = doc["onenetDeviceID"].as<String>();
+        onenetPassword = doc["onenetPassword"].as<String>();
+        onenetTransferInterval = doc["onenetTransferInterval"].as<int>();
+        maltPinReadingInterval = doc["maltPinReadingInterval"].as<int>();
+        maltPinRefreshingInterval = doc["maltPinRefreshingInterval"].as<int>();
     }
     return configContent;
 }
@@ -296,8 +461,9 @@ void firmwareUpdate()
 {
     Logln("Start FirmwareUpdate");
     Logln(fwURL);
-    
+
     WiFiClient client;
+    // client.setInsecure();
     t_httpUpdate_return ret = httpUpdate.update(client, fwURL);
     switch (ret)
     {
@@ -318,7 +484,8 @@ void firmwareUpdate()
 
 void handleSerialCommand(String cmd)
 {
-    if (cmd.c_str() == "restart"){
+    if (cmd.c_str() == "restart")
+    {
         ESP.restart();
         return;
     }
@@ -337,7 +504,7 @@ void handleSerialCommand(String cmd)
     {
         return;
     }
-    pinTrigger(pinControl, pinValue);
+    controlPin(pinControl, pinValue);
 }
 void onenetCallback(char *topic, byte *payload, unsigned int length)
 {
@@ -366,7 +533,7 @@ void onenetCallback(char *topic, byte *payload, unsigned int length)
         JsonObject obj = array[i];
         const uint8_t pinControl = obj["pin"].as<uint8_t>();
         const uint8_t pinValue = obj["value"].as<uint8_t>();
-        pinTrigger(pinControl, pinValue);
+        controlPin(pinControl, pinValue);
     }
 }
 void thingsboardCallback(char *topic, byte *payload, unsigned int length)
@@ -487,6 +654,7 @@ boolean onenetConnect()
     }
 
     onenetClient.setServer(onenetServer, onenetPort);
+    int retry = 0;
     while (!onenetClient.connected())
     {
         if (onenetClient.connect(onenetDeviceID.c_str(), onenetProductID.c_str(), onenetPassword.c_str()))
@@ -497,12 +665,19 @@ boolean onenetConnect()
         }
         else
         {
-            Log("Failed, rc=");
+            Log("Retry [");
+            Log(String(retry));
+            Log("] Failed, rc=");
             Log(String(onenetClient.state()));
-            Logln(", Retrying in 5 seconds");
+            Logln(", Retrying in 3 seconds");
+            retry += 1;
+            if (retry >= 5)
+            {
+                Logln("Attempted Connection to Onenet for 5 times. Retry later.");
+                break;
+            }
             delay(3000);
         }
-        delay(1000);
     }
     return false;
 }
@@ -510,6 +685,7 @@ boolean thingsboardConnect()
 {
     Logln("Thingsboard Connecting ...");
     thingsboardClient.setServer(thingsboardServer, thingsboardPort);
+    int retry = 0;
     while (!thingsboardClient.connected())
     {
         if (thingsboardClient.connect("ESP32Client", thingsboardUsername, thingsboardPassword))
@@ -521,80 +697,21 @@ boolean thingsboardConnect()
         }
         else
         {
-            Log("Failed, rc=");
+            Log("Retry [");
+            Log(String(retry));
+            Log("] Failed, rc=");
             Log(String(thingsboardClient.state()));
-            Logln(", Retrying in 5 seconds");
+            Logln(", Retrying in 3 seconds");
+            retry += 1;
+            if (retry >= 5)
+            {
+                Logln("Attempted Connection to Thingsboard for 5 times.");
+                break;
+            }
             delay(3000);
         }
-        delay(1000);
     }
     return false;
-}
-
-void sendPinValue()
-{
-    if (onenetClient.connected())
-    {
-        uint8_t pinCount = 0;
-        String onenet_msg = "{";
-        for (int i = 0; i < sizeof(pin); i++)
-        {
-            if (pinEnable[i] && pinReadWrite[i] == 0)
-            {
-                if (pinCount > 0)
-                {
-                    onenet_msg += ",";
-                }
-                uint8_t value;
-                if (pinType[i] == 1)
-                {
-                    value = analogRead(pin[i]);
-                }
-                else
-                {
-                    value = digitalRead(pin[i]);
-                }
-                onenet_msg += "\"" + pinTopic[i] + "\":";
-                onenet_msg += value;
-                if (pinEventTriggerEnable[i])
-                {
-                    switch (pinEventTriggerType[i])
-                    {
-                    case 0:
-                        if (value > pinEventTriggerValue[i])
-                        {
-                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
-                        }
-                        break;
-                    case 1:
-                        if (value == pinEventTriggerValue[i])
-                        {
-                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
-                        }
-                        break;
-                    case 2:
-                        if (value < pinEventTriggerValue[i])
-                        {
-                            onenet_msg += ",\"" + pinTopic[i] + " EventTrigger\": 1";
-                        }
-                        break;
-                    }
-                }
-                pinCount += 1;
-            }
-        }
-        onenet_msg += "}";
-        const char *msgJson = onenet_msg.c_str();
-        json_len = strlen(msgJson);                                           // length of msgJson
-        msg_buf[0] = char(0x03);                                              // buffer of the data sent first part is 3
-        msg_buf[1] = char(json_len >> 8);                                     // Second part is the 8 MSB of the data
-        msg_buf[2] = char(json_len & 0xff);                                   // Third part is 8 LSB of the data
-        memcpy(msg_buf + 3, msgJson, strlen(msgJson));                        // Forth part is the data in msgJson
-        msg_buf[3 + strlen(msgJson)] = 0;                                     // Add a 0 at last
-        onenetClient.publish("$dp", (uint8_t *)msg_buf, 3 + strlen(msgJson)); // Send data
-        // Log("public message client:");
-        // Log(msgJson);
-    }
 }
 
 int listDirectoryCount(String path)
@@ -684,7 +801,7 @@ void configureWebServer()
 {
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-              AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html", "text/html");
+              AsyncWebServerResponse *response = request->beginResponse(LittleFS, "/index.html.gz", "text/html");
               response->addHeader("Content-Encoding", "gzip");
               request->send(response); });
     server.on("/storage", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -755,10 +872,12 @@ void configureWebServer()
     if (paramsNr > 0)
     {
         // save config
-        onenetProductID = getQueryParam(request, "productID");
-        onenetDeviceID = getQueryParam(request, "deviceID");
-        onenetPassword = getQueryParam(request, "password");
-        onenetTransferInterval = getQueryParam(request, "interval");
+        onenetProductID = getQueryParam(request, "onenetProductID");
+        onenetDeviceID = getQueryParam(request, "onenetDeviceID");
+        onenetPassword = getQueryParam(request, "onenetPassword");
+        onenetTransferInterval = getQueryParam(request, "onenetTransferInterval").toInt();
+        maltPinReadingInterval = getQueryParam(request, "maltPinReadingInterval").toInt();
+        maltPinRefreshingInterval = getQueryParam(request, "maltPinRefreshingInterval").toInt();
 
         const String configContent = config2str();
         Log("Save Config ... ");
@@ -845,9 +964,17 @@ void configureWebServer()
         "/import", HTTP_POST, [](AsyncWebServerRequest *request) {},
         handleUpload);
 
-    server.on("/tailwindcss_3.3.3.js", HTTP_GET, [](AsyncWebServerRequest *request)
+    server.on("/pin/value", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/plain", pinValue2str()); });
+
+    // server.on("/tailwindcss_3.3.3.js", HTTP_GET, [](AsyncWebServerRequest *request)
+    //           {
+    //             String js = readFileContent("/tailwindcss_3.3.3.js");
+    //     request->send(200, "text/javascript", js); });
+
+    server.on("/chart.umd.min.js", HTTP_GET, [](AsyncWebServerRequest *request)
               {
-                String js = readFileContent("/tailwindcss_3.3.3.js");
+                String js = readFileContent("/chart.umd.min.js");
         request->send(200, "text/javascript", js); });
 
     server.onNotFound(handleNotFound);
@@ -882,6 +1009,8 @@ void setup()
     readConfig();
     readWiFi();
 
+    setupPin();
+
     if (APmode)
     {
         Logln("Start Config Portal");
@@ -904,37 +1033,12 @@ void setup()
     }
     else
     {
-        for (int i = 0; i < PIN_NUMBER; i++)
-        {
-            if (pinEnable[i])
-            {
-                Log("Set Pin ");
-                if (pinReadWrite[i] == 0)
-                {
-                    Log("Read, ");
-                }
-                else
-                {
-                    Log("Write, ");
-                }
-                Logln(String(pin[i]));
-                if (pinReadWrite[i] == 0)
-                {
-                    pinMode(pin[i], INPUT);
-                }
-                else
-                {
-                    pinMode(pin[i], OUTPUT);
-                    digitalWrite(pin[i], 0);
-                }
-            }
-        }
 
         wifiConnect();
         if (WiFi.status() == WL_CONNECTED)
         {
             // has wifi, connect to onenet onenetMQTT
-            onenetConnect();
+            // onenetConnect();
             thingsboardConnect();
         }
 
@@ -944,7 +1048,8 @@ void setup()
     Logln("=================================");
 }
 
-unsigned long previousMillis = 0;
+unsigned long previousOnenetTransferMillis = 0;
+unsigned long previousPinReadMillis = 0;
 String serialBuffer;
 void loop()
 {
@@ -954,6 +1059,7 @@ void loop()
     //     Log((char)d);
     //     Serial2.write(d);
     // }
+    unsigned long currentMillis = millis();
 
     while (Serial.available())
     {
@@ -968,14 +1074,19 @@ void loop()
         }
     }
 
+    if ((currentMillis - previousPinReadMillis) >= maltPinReadingInterval)
+    {
+        updatePinValue();
+        previousPinReadMillis = currentMillis;
+    }
+
     if (APmode)
     {
         dnsServer.processNextRequest();
         return;
     }
 
-    unsigned long currentMillis = millis();
-    if ((currentMillis - previousMillis) >= onenetTransferInterval.toInt())
+    if ((currentMillis - previousOnenetTransferMillis) >= onenetTransferInterval)
     {
         if (WiFi.status() != WL_CONNECTED)
         {
@@ -986,24 +1097,23 @@ void loop()
         {
             Serial.print(".");
 
-            if (!onenetClient.connected())
-            {
-                onenetConnect();
-            }
-            else
-            {
-                sendPinValue();
-            }
+            // if (!onenetClient.connected())
+            // {
+            //     onenetConnect();
+            // }
+            // else
+            // {
+            //     sendPinValue2Onenet();
+            // }
 
             if (!thingsboardClient.connected())
             {
                 thingsboardConnect();
             }
         }
-        previousMillis = currentMillis;
+        previousOnenetTransferMillis = currentMillis;
     }
     onenetClient.loop();
-
     thingsboardClient.loop();
     delay(100);
 }
